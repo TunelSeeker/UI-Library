@@ -8282,7 +8282,6 @@ Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
 local RainbowStep = 0
 local Hue = 0
 
--- ADD THIS BLUR FUNCTION HERE:
 function Library:ToggleBlur(enable)
     if enable then
         if not BlurEffect then
@@ -8291,10 +8290,41 @@ function Library:ToggleBlur(enable)
             BlurEffect.Parent = Lighting
         end
         
+        -- Create static overlay if it doesn't exist
+        if not Library.StaticOverlay then
+            Library.StaticOverlay = Library:Create("Frame", {
+                BackgroundColor3 = Color3.new(1, 1, 1);
+                BackgroundTransparency = 0.95;
+                Size = UDim2.new(1, 0, 1, 0);
+                ZIndex = 1000;
+                Visible = false;
+                Parent = ScreenGui;
+            })
+            
+            -- Add some noise points
+            for i = 1, 50 do
+                local noise = Library:Create("Frame", {
+                    BackgroundColor3 = Color3.new(math.random(), math.random(), math.random());
+                    Position = UDim2.new(math.random(), 0, math.random(), 0);
+                    Size = UDim2.new(0, math.random(1, 3), 0, math.random(1, 3));
+                    ZIndex = 1001;
+                    Parent = Library.StaticOverlay;
+                })
+            end
+        end
+        
         -- Animate blur in
         TweenService:Create(BlurEffect, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
             Size = 24
         }):Play()
+        
+        -- Show static with slight delay
+        task.delay(0.1, function()
+            if Library.StaticOverlay then
+                Library.StaticOverlay.Visible = true
+            end
+        end)
+        
     else
         if BlurEffect then
             -- Animate blur out
@@ -8302,6 +8332,11 @@ function Library:ToggleBlur(enable)
                 Size = 0
             })
             tween:Play()
+            
+            -- Hide static
+            if Library.StaticOverlay then
+                Library.StaticOverlay.Visible = false
+            end
             
             tween.Completed:Connect(function()
                 if BlurEffect then
