@@ -19,6 +19,9 @@ if typeof(getgenv) == "function" and typeof(getgenv().Drawing) == "table" then
     DrawingLib = getgenv().Drawing
 end
 
+local BlurEffect = nil
+local Lighting = cloneref(game:GetService("Lighting"))
+
 local setclipboard = setclipboard or nil
 local getgenv = getgenv or function()
 	return shared
@@ -79,7 +82,7 @@ ModalElement.AnchorPoint = Vector2.zero
 ModalElement.Text = ""
 ModalElement.ZIndex = -999
 ModalElement.Parent = ScreenGui
-
+	
 local LibraryMainOuterFrame = nil
 
 local Toggles = {}
@@ -557,12 +560,27 @@ function Library:MakeDraggable(Instance, Cutoff, IsMainWindow)
     Instance.Active = true
 
     if Library.IsMobile == false then
+        local dragging = false
+        local dragInput = nil
+        local dragStart = nil
+        local startPos = nil
+        
+        local function update(input)
+            local delta = input.Position - dragStart
+            Instance.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+
         Instance.InputBegan:Connect(function(Input)
             if Input.UserInputType == Enum.UserInputType.MouseButton1 then
                 if IsMainWindow == true and Library.CantDragForced == true then
                     return
                 end
-           
+
                 local ObjPos = Vector2.new(
                     Mouse.X - Instance.AbsolutePosition.X,
                     Mouse.Y - Instance.AbsolutePosition.Y
@@ -572,19 +590,42 @@ function Library:MakeDraggable(Instance, Cutoff, IsMainWindow)
                     return
                 end
 
-                while InputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) do
-                    Instance.Position = UDim2.new(
-                        0,
-                        Mouse.X - ObjPos.X + (Instance.Size.X.Offset * Instance.AnchorPoint.X),
-                        0,
-                        Mouse.Y - ObjPos.Y + (Instance.Size.Y.Offset * Instance.AnchorPoint.Y)
-                    )
+                dragging = true
+                dragStart = Input.Position
+                startPos = Instance.Position
 
-                    RunService.RenderStepped:Wait()
-                end
+                Input.Changed:Connect(function()
+                    if Input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
             end
         end)
+
+        Instance.InputChanged:Connect(function(Input)
+            if Input.UserInputType == Enum.UserInputType.MouseMovement then
+                dragInput = Input
+            end
+        end)
+
+        Library:GiveSignal(InputService.InputChanged:Connect(function(Input)
+            if Input == dragInput and dragging then
+                update(Input)
+            end
+        end))
+
+        -- Smooth rendering during drag
+        Library:GiveSignal(RunService.RenderStepped:Connect(function()
+            if dragging then
+                -- Update position smoothly each frame
+                if dragInput then
+                    update(dragInput)
+                end
+            end
+        end))
+
     else
+        -- Mobile drag code (keep existing mobile code)
         local Dragging, DraggingInput, DraggingStart, StartPosition
 
         InputService.TouchStarted:Connect(function(Input)
@@ -607,6 +648,7 @@ function Library:MakeDraggable(Instance, Cutoff, IsMainWindow)
                 Dragging = true
             end
         end)
+        
         InputService.TouchMoved:Connect(function(Input)
             if IsMainWindow == true and Library.CantDragForced == true then
                 Dragging = false
@@ -624,6 +666,7 @@ function Library:MakeDraggable(Instance, Cutoff, IsMainWindow)
                 )
             end
         end)
+        
         InputService.TouchEnded:Connect(function(Input)
             if Input == DraggingInput then 
                 Dragging = false
@@ -1096,6 +1139,12 @@ function Library:Unload()
 
     for _, Tooltip in Tooltips do
         Library:SafeCallback(Tooltip.Destroy, Tooltip)
+    end
+
+    -- Clean up blur effect
+    if BlurEffect then
+        BlurEffect:Destroy()
+        BlurEffect = nil
     end
 
     Library.Unloaded = true
@@ -7919,6 +7968,8 @@ end
             ModalElement.Modal = Library.Toggled
         end
 
+  		Library:ToggleBlur(Toggled)
+
         if Toggled then
             -- A bit scuffed, but if we're going from not toggled -> toggled we want to show the frame immediately so that the fade is visible.
             Outer.Visible = true
@@ -8230,6 +8281,37 @@ Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
 --// Rainbow Handler \\--
 local RainbowStep = 0
 local Hue = 0
+
+-- ADD THIS BLUR FUNCTION HERE:
+function Library:ToggleBlur(enable)
+    if enable then
+        if not BlurEffect then
+            BlurEffect = Instance.new("BlurEffect")
+            BlurEffect.Size = 0
+            BlurEffect.Parent = Lighting
+        end
+        
+        -- Animate blur in
+        TweenService:Create(BlurEffect, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = 24
+        }):Play()
+    else
+        if BlurEffect then
+            -- Animate blur out
+            local tween = TweenService:Create(BlurEffect, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = 0
+            })
+            tween:Play()
+            
+            tween.Completed:Connect(function()
+                if BlurEffect then
+                    BlurEffect:Destroy()
+                    BlurEffect = nil
+                end
+            end)
+        end
+    end
+end
 
 Library:GiveSignal(RunService.RenderStepped:Connect(function(Delta)
     if Library.Unloaded then
