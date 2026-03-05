@@ -7968,7 +7968,9 @@ end
             ModalElement.Modal = Library.Toggled
         end
 
-  		Library:ToggleBlur(Toggled)
+	    if Library.Toggles and Library.Toggles.BGBlur and Library.Toggles.BGBlur.Value then
+	        Library:ToggleBlur(Toggled)
+	    end
 
         if Toggled then
             -- A bit scuffed, but if we're going from not toggled -> toggled we want to show the frame immediately so that the fade is visible.
