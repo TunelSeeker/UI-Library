@@ -6179,12 +6179,16 @@ end
 --// Watermark \\--
 do
     local WatermarkOuter = Library:Create("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0); -- Anchor at top-center
+        BackgroundColor3 = Color3.new(0, 0, 0);
         BorderColor3 = Color3.new(0, 0, 0);
-        Position = UDim2.new(0, 100, 0, -25);
+        Position = UDim2.new(0.5, 0, 0, 10); -- 10 pixels from top, centered
         Size = UDim2.new(0, 213, 0, 20);
         ZIndex = 200;
         Visible = false;
         Parent = ScreenGui;
+        Active = false; -- Make non-interactive
+        Draggable = false; -- Explicitly set non-draggable
     })
 
     local WatermarkInner = Library:Create("Frame", {
@@ -6231,14 +6235,16 @@ do
         Position = UDim2.new(0, 5, 0, 0);
         Size = UDim2.new(1, -4, 1, 0);
         TextSize = 14;
-        TextXAlignment = Enum.TextXAlignment.Left;
+        TextXAlignment = Enum.TextXAlignment.Center; -- Center text
         ZIndex = 203;
         Parent = InnerFrame;
     })
 
     Library.Watermark = WatermarkOuter
     Library.WatermarkText = WatermarkLabel
-    Library:MakeDraggable(Library.Watermark)
+    
+    -- REMOVE the draggable line:
+    -- Library:MakeDraggable(Library.Watermark)
 
     function Library:SetWatermarkVisibility(Bool)
         Library.Watermark.Visible = Bool
