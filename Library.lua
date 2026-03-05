@@ -6590,14 +6590,15 @@ function Library:CreateWindow(...)
         BorderColor3 = "AccentColor";
     })
 
-    local WindowLabel = Library:CreateLabel({
-        Position = UDim2.new(0, 7, 0, 0);
-        Size = UDim2.new(0, 0, 0, 25);
-        Text = WindowInfo.Title or "";
-        TextXAlignment = Enum.TextXAlignment.Left;
-        ZIndex = 1;
-        Parent = Inner;
-    })
+	local WindowLabel = Library:CreateLabel({
+	    Position = UDim2.new(0.5, 0, 0, 0); -- Center horizontally
+	    AnchorPoint = Vector2.new(0.5, 0); -- Anchor point at center-top
+	    Size = UDim2.new(0, 0, 0, 25);
+	    Text = WindowInfo.Title or "";
+	    TextXAlignment = Enum.TextXAlignment.Center; -- Center text
+	    ZIndex = 1;
+	    Parent = Inner;
+	})
 
     local MainSectionOuter = Library:Create("Frame", {
         BackgroundColor3 = Library.BackgroundColor;
@@ -6627,26 +6628,30 @@ function Library:CreateWindow(...)
         BackgroundColor3 = "BackgroundColor";
     })
 
-    local TabArea = Library:Create("ScrollingFrame", {
-        ScrollingDirection = Enum.ScrollingDirection.X;
-        CanvasSize = UDim2.new(0, 0, 2, 0);
-        HorizontalScrollBarInset = Enum.ScrollBarInset.Always;
-        AutomaticCanvasSize = Enum.AutomaticSize.XY;
-        ScrollBarThickness = 0;
-        BackgroundTransparency = 1;
-        Position = UDim2.new(0, 8 - WindowInfo.TabPadding, 0, 4);
-        Size = UDim2.new(1, -10, 0, 26);
-        ZIndex = 1;
-        Parent = MainSectionInner;
-    })
+	local TabArea = Library:Create("Frame", { -- Changed from ScrollingFrame to Frame
+	    BackgroundTransparency = 1;
+	    Position = UDim2.new(0, 8 - WindowInfo.TabPadding, 0, 4);
+	    Size = UDim2.new(1, -10, 0, 26);
+	    ZIndex = 1;
+	    Parent = MainSectionInner;
+	})
 
-    local TabListLayout = Library:Create("UIListLayout", {
-        Padding = UDim.new(0, WindowInfo.TabPadding);
-        FillDirection = Enum.FillDirection.Horizontal;
-        SortOrder = Enum.SortOrder.LayoutOrder;
-        VerticalAlignment = Enum.VerticalAlignment.Center;
-        Parent = TabArea;
-    })
+	local TabListLayout = Library:Create("UIListLayout", {
+	    Padding = UDim.new(0, WindowInfo.TabPadding);
+	    FillDirection = Enum.FillDirection.Horizontal;
+	    HorizontalAlignment = Enum.HorizontalAlignment.Center; -- Center tabs horizontally
+	    SortOrder = Enum.SortOrder.LayoutOrder;
+	    VerticalAlignment = Enum.VerticalAlignment.Center;
+	    Parent = TabArea;
+	})
+
+-- Add a UIListLayout to handle centering
+local TabContainerLayout = Library:Create("UIListLayout", {
+    FillDirection = Enum.FillDirection.Horizontal;
+    HorizontalAlignment = Enum.HorizontalAlignment.Center;
+    SortOrder = Enum.SortOrder.LayoutOrder;
+    Parent = TabArea;
+})
 
     Library:Create("Frame", {
         BackgroundColor3 = Library.BackgroundColor;
