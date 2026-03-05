@@ -8290,26 +8290,29 @@ function Library:ToggleBlur(enable)
             BlurEffect.Parent = Lighting
         end
         
-        -- Create static overlay if it doesn't exist
+        -- Create static overlay with animation
         if not Library.StaticOverlay then
             Library.StaticOverlay = Library:Create("Frame", {
-                BackgroundColor3 = Color3.new(1, 1, 1);
-                BackgroundTransparency = 0.95;
+                BackgroundColor3 = Color3.new(0, 0, 0);
+                BackgroundTransparency = 0.3;
                 Size = UDim2.new(1, 0, 1, 0);
                 ZIndex = 1000;
                 Visible = false;
                 Parent = ScreenGui;
             })
             
-            -- Add some noise points
-            for i = 1, 50 do
-                local noise = Library:Create("Frame", {
-                    BackgroundColor3 = Color3.new(math.random(), math.random(), math.random());
-                    Position = UDim2.new(math.random(), 0, math.random(), 0);
-                    Size = UDim2.new(0, math.random(1, 3), 0, math.random(1, 3));
-                    ZIndex = 1001;
-                    Parent = Library.StaticOverlay;
-                })
+            -- Create a grid of static pixels
+            for x = 0, 40 do
+                for y = 0, 30 do
+                    local noise = Library:Create("Frame", {
+                        BackgroundColor3 = Color3.new(1, 1, 1);
+                        BackgroundTransparency = math.random(70, 95) / 100;
+                        Position = UDim2.new(x/40, 0, y/30, 0);
+                        Size = UDim2.new(0.025, 0, 0.033, 0);
+                        ZIndex = 1001;
+                        Parent = Library.StaticOverlay;
+                    })
+                end
             end
         end
         
@@ -8318,12 +8321,26 @@ function Library:ToggleBlur(enable)
             Size = 24
         }):Play()
         
-        -- Show static with slight delay
-        task.delay(0.1, function()
-            if Library.StaticOverlay then
-                Library.StaticOverlay.Visible = true
-            end
-        end)
+        -- Show static
+        Library.StaticOverlay.Visible = true
+        
+        -- Animate static (random pixel flickering)
+        if not Library.StaticConnection then
+            Library.StaticConnection = RunService.RenderStepped:Connect(function()
+                if Library.StaticOverlay and Library.StaticOverlay.Visible then
+                    for _, pixel in pairs(Library.StaticOverlay:GetChildren()) do
+                        if pixel:IsA("Frame") then
+                            -- Randomly change transparency for flicker effect
+                            pixel.BackgroundTransparency = math.random(70, 98) / 100
+                            -- Occasionally change color for more authentic static
+                            if math.random(1, 10) == 1 then
+                                pixel.BackgroundColor3 = Color3.new(math.random(), math.random(), math.random())
+                            end
+                        end
+                    end
+                end
+            end)
+        end
         
     else
         if BlurEffect then
@@ -8338,6 +8355,12 @@ function Library:ToggleBlur(enable)
                 Library.StaticOverlay.Visible = false
             end
             
+            -- Clean up animation connection
+            if Library.StaticConnection then
+                Library.StaticConnection:Disconnect()
+                Library.StaticConnection = nil
+            end
+            
             tween.Completed:Connect(function()
                 if BlurEffect then
                     BlurEffect:Destroy()
@@ -8347,26 +8370,6 @@ function Library:ToggleBlur(enable)
         end
     end
 end
-
-Library:GiveSignal(RunService.RenderStepped:Connect(function(Delta)
-    if Library.Unloaded then
-        return
-    end
-
-    RainbowStep = RainbowStep + Delta
-    if RainbowStep >= (1 / 60) then
-        RainbowStep = 0
-
-        Hue = Hue + (1 / 400)
-
-        if Hue > 1 then
-            Hue = 0
-        end
-
-        Library.CurrentRainbowHue = Hue
-        Library.CurrentRainbowColor = Color3.fromHSV(Hue, 0.8, 1)
-    end
-end))
 
 ----
 getgenv().Linoria = Library
