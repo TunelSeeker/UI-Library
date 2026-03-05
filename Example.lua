@@ -717,6 +717,21 @@ local MenuGroup = Tabs["UI Settings"]:AddLeftGroupbox("Menu")
 
 MenuGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu", Callback = function(value) Library.KeybindFrame.Visible = value end})
 MenuGroup:AddToggle("ShowCustomCursor", {Text = "Custom Cursor", Default = true, Callback = function(Value) Library.ShowCustomCursor = Value end})
+
+UISettings:AddToggle("BGBlur", {
+    Text = "Toggle BG Blur",
+    Default = true, -- Default is on
+    Tooltip = "Enables/disables the background blur effect when menu is open",
+    Callback = function(Value)
+        -- When toggled off, immediately remove blur if menu is open
+        if not Value and Library.Toggled then
+            Library:ToggleBlur(false)
+        elseif Value and Library.Toggled then
+            Library:ToggleBlur(true)
+        end
+    end
+})
+
 MenuGroup:AddDivider()
 MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
 MenuGroup:AddButton("Unload", function() Library:Unload() end)
