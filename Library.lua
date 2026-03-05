@@ -7968,7 +7968,17 @@ end
             ModalElement.Modal = Library.Toggled
         end
 
-	    if Library.Toggles and Library.Toggles.BGBlur and Library.Toggles.BGBlur.Value then
+	    local shouldBlur = true -- Default to true
+    
+	    -- Try to get the toggle value, if it exists
+	    pcall(function()
+	        if Library.Toggles and Library.Toggles.BGBlur ~= nil then
+	            shouldBlur = Library.Toggles.BGBlur.Value
+	        end
+	    end)
+    
+	    -- Apply blur based on toggle state
+	    if shouldBlur then
 	        Library:ToggleBlur(Toggled)
 	    end
 
