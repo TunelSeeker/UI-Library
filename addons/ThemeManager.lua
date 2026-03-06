@@ -54,14 +54,14 @@ local ThemeManager = {} do
 
 	ThemeManager.Library = nil
 	ThemeManager.BuiltInThemes = {
-		['Default']       = { 1, { FontColor = "ffffff", MainColor = "1c1c1c", AccentColor = "0055ff", BackgroundColor = "141414", OutlineColor = "323232" } },
-		['BBot']          = { 2, { FontColor = "ffffff", MainColor = "1e1e1e", AccentColor = "7e48a3", BackgroundColor = "232323", OutlineColor = "141414" } },
-		['Fatality']      = { 3, { FontColor = "ffffff", MainColor = "1e1842", AccentColor = "c50754", BackgroundColor = "191335", OutlineColor = "3c355d" } },
-		['Jester']        = { 4, { FontColor = "ffffff", MainColor = "242424", AccentColor = "db4467", BackgroundColor = "1c1c1c", OutlineColor = "373737" } },
-		['Mint']          = { 5, { FontColor = "ffffff", MainColor = "242424", AccentColor = "3db488", BackgroundColor = "1c1c1c", OutlineColor = "373737" } },
-		['Tokyo Night']   = { 6, { FontColor = "ffffff", MainColor = "191925", AccentColor = "6759b3", BackgroundColor = "16161f", OutlineColor = "323232" } },
-		['Ubuntu']        = { 7, { FontColor = "ffffff", MainColor = "3e3e3e", AccentColor = "e2581e", BackgroundColor = "323232", OutlineColor = "191919" } },
-		['Quartz']        = { 8, { FontColor = "ffffff", MainColor = "232330", AccentColor = "426e87", BackgroundColor = "1d1b26", OutlineColor = "27232f" } },
+		['Moody Purple']       = { 1, { FontColor = "e0e0ff", MainColor = "16112a", AccentColor = "8a4fff", BackgroundColor = "0c0820", OutlineColor = "282236" } }, --default
+		['Royal Purple']          = { 2, { FontColor = "e6e6fa", MainColor = "1e1a2b", AccentColor = "7b2eda", BackgroundColor = "13111c", OutlineColor = "2d283a" } },
+		['Electric Purple']      = { 3, { FontColor = "f0f0f0", MainColor = "1a1a2e", AccentColor = "9147ff", BackgroundColor = "0d0d17", OutlineColor = "2a2a3a" } },
+		['Warm Purple']        = { 4, { FontColor = "f2e6ff", MainColor = "211a2a", AccentColor = "9f5eff", BackgroundColor = "15101c", OutlineColor = "332c3c" } },
+		['High Contrast Purple']          = { 5, { FontColor = "ffffff", MainColor = "1c1624", AccentColor = "b47aff", BackgroundColor = "0f0b14", OutlineColor = "3a3145" } },
+		--['Tokyo Night']   = { 6, { FontColor = "ffffff", MainColor = "191925", AccentColor = "6759b3", BackgroundColor = "16161f", OutlineColor = "323232" } },
+		--['Ubuntu']        = { 7, { FontColor = "ffffff", MainColor = "3e3e3e", AccentColor = "e2581e", BackgroundColor = "323232", OutlineColor = "191919" } },
+		--['Quartz']        = { 8, { FontColor = "ffffff", MainColor = "232330", AccentColor = "426e87", BackgroundColor = "1d1b26", OutlineColor = "27232f" } },
 	}
 
 	function ApplyBackgroundVideo(videoLink)
