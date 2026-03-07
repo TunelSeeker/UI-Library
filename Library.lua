@@ -6585,6 +6585,8 @@ function Library:Notify(...)
         Data.Description = tostring(Info.Description)
         Data.Time = Info.Time or 5
         Data.SoundId = Info.SoundId
+        Data.Icon = Info.Icon
+        Data.IconColor = Info.IconColor
     else
         Data.Title = ""
         Data.Description = tostring(Info)
@@ -6592,67 +6594,146 @@ function Library:Notify(...)
         Data.SoundId = select(3, ...)
     end
 
-    -- Create a temporary ScreenGui in CoreGui
+    -- Create a dedicated ScreenGui in CoreGui (always visible)
     local gui = Instance.new("ScreenGui")
-    gui.Name = "Notification"
+    gui.Name = "LinoriaNotification"
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    gui.ResetOnSpawn = false
     gui.Parent = game:GetService("CoreGui")
 
-    -- Background frame
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 300, 0, 50)
-    frame.Position = UDim2.new(0.5, -150, 0, 50)
-    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    frame.BorderSizePixel = 0
-    frame.Parent = gui
+    -- Outer frame (black border)
+    local outer = Instance.new("Frame")
+    outer.BackgroundColor3 = Color3.new(0, 0, 0)
+    outer.BorderColor3 = Color3.new(0, 0, 0)
+    outer.Size = UDim2.new(0, 300, 0, 60)
+    outer.Position = UDim2.new(0.5, -150, 0, 40) -- Centered near top
+    outer.ZIndex = 1000
+    outer.Parent = gui
 
-    -- Accent bar
-    local accent = Instance.new("Frame")
-    accent.Size = UDim2.new(1, 0, 0, 3)
-    accent.Position = UDim2.new(0, 0, 1, -3)
-    accent.BackgroundColor3 = Library.AccentColor
-    accent.BorderSizePixel = 0
-    accent.Parent = frame
+    -- Inner frame (main background)
+    local inner = Instance.new("Frame")
+    inner.BackgroundColor3 = Library.MainColor
+    inner.BorderColor3 = Library.OutlineColor
+    inner.BorderMode = Enum.BorderMode.Inset
+    inner.Size = UDim2.new(1, 0, 1, 0)
+    inner.ZIndex = 1001
+    inner.Parent = outer
+
+    -- Inner frame with gradient (matches original)
+    local innerFrame = Instance.new("Frame")
+    innerFrame.BackgroundColor3 = Color3.new(1, 1, 1)
+    innerFrame.BorderSizePixel = 0
+    innerFrame.Position = UDim2.new(0, 1, 0, 1)
+    innerFrame.Size = UDim2.new(1, -2, 1, -2)
+    innerFrame.ZIndex = 1002
+    innerFrame.Parent = inner
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
+        ColorSequenceKeypoint.new(1, Library.MainColor),
+    })
+    gradient.Rotation = -90
+    gradient.Parent = innerFrame
+
+    -- Side accent bar (colored)
+    local sideColor = Instance.new("Frame")
+    sideColor.BackgroundColor3 = Library.AccentColor
+    sideColor.BorderSizePixel = 0
+    sideColor.Position = UDim2.new(0, 0, 0, 0)
+    sideColor.Size = UDim2.new(0, 3, 1, 0)
+    sideColor.ZIndex = 1003
+    sideColor.Parent = innerFrame
 
     -- Text label
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 1, -10)
-    label.Position = UDim2.new(0, 5, 0, 5)
     label.BackgroundTransparency = 1
-    label.Text = (Data.Title ~= "" and "[" .. Data.Title .. "] " or "") .. Data.Description
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.TextSize = 14
     label.Font = Library.Font
-    label.TextWrapped = true
+    label.TextColor3 = Library.FontColor
+    label.TextSize = 14
+    label.TextStrokeTransparency = 0
+    label.Position = UDim2.new(0, 8, 0, 4)
+    label.Size = UDim2.new(1, -16, 1, -8)
     label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = frame
+    label.TextYAlignment = Enum.TextYAlignment.Top
+    label.TextWrapped = true
+    label.RichText = true
+    label.ZIndex = 1004
+    label.Parent = innerFrame
+    Library:ApplyTextStroke(label)
+
+    -- Set text (title + description)
+    local fullText = (Data.Title ~= "" and "[" .. Data.Title .. "] " or "") .. Data.Description
+    label.Text = fullText
+
+    -- Optional icon
+    if Data.Icon then
+        local icon = Library:GetCustomIcon(Data.Icon)
+        if icon then
+            local iconLabel = Instance.new("ImageLabel")
+            iconLabel.BackgroundTransparency = 1
+            iconLabel.Size = UDim2.new(0, 14, 0, 14)
+            iconLabel.Position = UDim2.new(0, 8, 0, 4)
+            iconLabel.Image = icon.Url
+            iconLabel.ImageColor3 = Data.IconColor or Library.FontColor
+            iconLabel.ImageRectOffset = icon.ImageRectOffset
+            iconLabel.ImageRectSize = icon.ImageRectSize
+            iconLabel.ZIndex = 1005
+            iconLabel.Parent = innerFrame
+
+            label.Position = UDim2.new(0, 26, 0, 2)
+            label.Size = UDim2.new(1, -34, 1, -4)
+        end
+    end
+
+    -- Auto‑size height based on text
+    local textBounds = TextService:GetTextSize(fullText, label.TextSize, label.Font, Vector2.new(268, math.huge))
+    local newHeight = math.max(60, textBounds.Y + 12)
+    outer.Size = UDim2.new(0, 300, 0, newHeight)
 
     -- Play sound if provided
     if Data.SoundId then
         local sound = Instance.new("Sound")
         sound.SoundId = "rbxassetid://" .. tostring(Data.SoundId):gsub("rbxassetid://", "")
-        sound.Volume = 1
+        sound.Volume = 3
+        sound.PlayOnRemove = true
         sound.Parent = gui
-        sound:Play()
-        game:GetService("Debris"):AddItem(sound, 5)
+        sound:Destroy() -- Plays and cleans up
     end
 
     -- Fade in animation
-    frame.BackgroundTransparency = 1
+    outer.BackgroundTransparency = 1
+    inner.BackgroundTransparency = 1
+    inner.BorderTransparency = 1
+    innerFrame.BackgroundTransparency = 1
+    gradient.Transparency = 1
+    sideColor.BackgroundTransparency = 1
     label.TextTransparency = 1
-    accent.BackgroundTransparency = 1
+    if iconLabel then iconLabel.ImageTransparency = 1 end
 
-    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    game:GetService("TweenService"):Create(frame, tweenInfo, { BackgroundTransparency = 0 }):Play()
+    local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    game:GetService("TweenService"):Create(outer, tweenInfo, { BackgroundTransparency = 0 }):Play()
+    game:GetService("TweenService"):Create(inner, tweenInfo, { BackgroundTransparency = 0, BorderTransparency = 0 }):Play()
+    game:GetService("TweenService"):Create(innerFrame, tweenInfo, { BackgroundTransparency = 0 }):Play()
+    game:GetService("TweenService"):Create(gradient, tweenInfo, { Transparency = 0 }):Play()
+    game:GetService("TweenService"):Create(sideColor, tweenInfo, { BackgroundTransparency = 0 }):Play()
     game:GetService("TweenService"):Create(label, tweenInfo, { TextTransparency = 0 }):Play()
-    game:GetService("TweenService"):Create(accent, tweenInfo, { BackgroundTransparency = 0 }):Play()
+    if iconLabel then
+        game:GetService("TweenService"):Create(iconLabel, tweenInfo, { ImageTransparency = 0 }):Play()
+    end
 
-    -- Destroy after time
+    -- Destroy after delay with fade out
     task.delay(Data.Time, function()
         local fadeOut = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        game:GetService("TweenService"):Create(frame, fadeOut, { BackgroundTransparency = 1 }):Play()
+        game:GetService("TweenService"):Create(outer, fadeOut, { BackgroundTransparency = 1 }):Play()
+        game:GetService("TweenService"):Create(inner, fadeOut, { BackgroundTransparency = 1, BorderTransparency = 1 }):Play()
+        game:GetService("TweenService"):Create(innerFrame, fadeOut, { BackgroundTransparency = 1 }):Play()
+        game:GetService("TweenService"):Create(gradient, fadeOut, { Transparency = 1 }):Play()
+        game:GetService("TweenService"):Create(sideColor, fadeOut, { BackgroundTransparency = 1 }):Play()
         game:GetService("TweenService"):Create(label, fadeOut, { TextTransparency = 1 }):Play()
-        game:GetService("TweenService"):Create(accent, fadeOut, { BackgroundTransparency = 1 }):Play()
+        if iconLabel then
+            game:GetService("TweenService"):Create(iconLabel, fadeOut, { ImageTransparency = 1 }):Play()
+        end
         task.wait(0.2)
         gui:Destroy()
     end)
