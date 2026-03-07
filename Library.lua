@@ -72,7 +72,7 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 ScreenGui.DisplayOrder = 999
 ScreenGui.ResetOnSpawn = false
-ParentUI(ScreenGui)
+ScreenGui.Parent = game:GetService("CoreGui") -- Force parent to CoreGui (always visible)
 
 local ModalElement = Instance.new("TextButton")
 ModalElement.BackgroundTransparency = 1
@@ -6576,169 +6576,272 @@ end
     end
 end]]--
 
-function Library:Notify(...)
-    local Data = {}
-    local Info = select(1, ...)
-
-    if typeof(Info) == "table" then
-        Data.Title = Info.Title and tostring(Info.Title) or ""
-        Data.Description = tostring(Info.Description)
-        Data.Time = Info.Time or 5
-        Data.SoundId = Info.SoundId
-        Data.Icon = Info.Icon
-        Data.IconColor = Info.IconColor
-    else
-        Data.Title = ""
-        Data.Description = tostring(Info)
-        Data.Time = select(2, ...) or 5
-        Data.SoundId = select(3, ...)
-    end
-
-    -- Create a dedicated ScreenGui in CoreGui (always visible)
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "LinoriaNotification"
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
-    gui.ResetOnSpawn = false
-    gui.Parent = game:GetService("CoreGui")
-
-    -- Outer frame (black border)
-    local outer = Instance.new("Frame")
-    outer.BackgroundColor3 = Color3.new(0, 0, 0)
-    outer.BorderColor3 = Color3.new(0, 0, 0)
-    outer.Size = UDim2.new(0, 300, 0, 60)
-    outer.Position = UDim2.new(0.5, -150, 0, 40) -- Centered near top
-    outer.ZIndex = 1000
-    outer.Parent = gui
-
-    -- Inner frame (main background)
-    local inner = Instance.new("Frame")
-    inner.BackgroundColor3 = Library.MainColor
-    inner.BorderColor3 = Library.OutlineColor
-    inner.BorderMode = Enum.BorderMode.Inset
-    inner.Size = UDim2.new(1, 0, 1, 0)
-    inner.ZIndex = 1001
-    inner.Parent = outer
-
-    -- Inner frame with gradient (matches original)
-    local innerFrame = Instance.new("Frame")
-    innerFrame.BackgroundColor3 = Color3.new(1, 1, 1)
-    innerFrame.BorderSizePixel = 0
-    innerFrame.Position = UDim2.new(0, 1, 0, 1)
-    innerFrame.Size = UDim2.new(1, -2, 1, -2)
-    innerFrame.ZIndex = 1002
-    innerFrame.Parent = inner
-
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
-        ColorSequenceKeypoint.new(1, Library.MainColor),
+do
+    Library.LeftNotificationArea = Library:Create("Frame", {
+        BackgroundTransparency = 1;
+        Position = UDim2.new(0, 0, 0, 40);
+        Size = UDim2.new(0, 300, 0, 200);
+        ZIndex = 11000;
+        Parent = ScreenGui;
     })
-    gradient.Rotation = -90
-    gradient.Parent = innerFrame
 
-    -- Side accent bar (colored)
-    local sideColor = Instance.new("Frame")
-    sideColor.BackgroundColor3 = Library.AccentColor
-    sideColor.BorderSizePixel = 0
-    sideColor.Position = UDim2.new(0, 0, 0, 0)
-    sideColor.Size = UDim2.new(0, 3, 1, 0)
-    sideColor.ZIndex = 1003
-    sideColor.Parent = innerFrame
+    Library:Create("UIListLayout", {
+        Padding = UDim.new(0, 4);
+        FillDirection = Enum.FillDirection.Vertical;
+        SortOrder = Enum.SortOrder.LayoutOrder;
+        Parent = Library.LeftNotificationArea;
+    })
 
-    -- Text label
-    local label = Instance.new("TextLabel")
-    label.BackgroundTransparency = 1
-    label.Font = Library.Font
-    label.TextColor3 = Library.FontColor
-    label.TextSize = 14
-    label.TextStrokeTransparency = 0
-    label.Position = UDim2.new(0, 8, 0, 4)
-    label.Size = UDim2.new(1, -16, 1, -8)
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.TextYAlignment = Enum.TextYAlignment.Top
-    label.TextWrapped = true
-    label.RichText = true
-    label.ZIndex = 1004
-    label.Parent = innerFrame
-    Library:ApplyTextStroke(label)
 
-    -- Set text (title + description)
-    local fullText = (Data.Title ~= "" and "[" .. Data.Title .. "] " or "") .. Data.Description
-    label.Text = fullText
+    Library.RightNotificationArea = Library:Create("Frame", {
+        AnchorPoint = Vector2.new(1, 0);
+        BackgroundTransparency = 1;
+        Position = UDim2.new(1, 0, 0, 40);
+        Size = UDim2.new(0, 300, 0, 200);
+        ZIndex = 11000;
+        Parent = ScreenGui;
+    })
 
-    -- Optional icon
-    if Data.Icon then
-        local icon = Library:GetCustomIcon(Data.Icon)
-        if icon then
-            local iconLabel = Instance.new("ImageLabel")
-            iconLabel.BackgroundTransparency = 1
-            iconLabel.Size = UDim2.new(0, 14, 0, 14)
-            iconLabel.Position = UDim2.new(0, 8, 0, 4)
-            iconLabel.Image = icon.Url
-            iconLabel.ImageColor3 = Data.IconColor or Library.FontColor
-            iconLabel.ImageRectOffset = icon.ImageRectOffset
-            iconLabel.ImageRectSize = icon.ImageRectSize
-            iconLabel.ZIndex = 1005
-            iconLabel.Parent = innerFrame
+    Library:Create("UIListLayout", {
+        Padding = UDim.new(0, 4);
+        FillDirection = Enum.FillDirection.Vertical;
+        HorizontalAlignment = Enum.HorizontalAlignment.Right;
+        SortOrder = Enum.SortOrder.LayoutOrder;
+        Parent = Library.RightNotificationArea;
+    })
+        
+    function Library:SetNotifySide(Side: string)
+        Library.NotifySide = Side
+    end
 
-            label.Position = UDim2.new(0, 26, 0, 2)
-            label.Size = UDim2.new(1, -34, 1, -4)
+    function Library:Notify(...)
+        local Data = {}
+        local Info = select(1, ...)
+
+        if typeof(Info) == "table" then
+            Data.Title = Info.Title and tostring(Info.Title) or ""
+            Data.Description = tostring(Info.Description)
+            Data.Time = Info.Time or 5
+            Data.SoundId = Info.SoundId
+            Data.Steps = Info.Steps
+            Data.Persist = Info.Persist
+            Data.Icon = Info.Icon
+            Data.IconColor = Info.IconColor
+        else
+            Data.Title = ""
+            Data.Description = tostring(Info)
+            Data.Time = select(2, ...) or 5
+            Data.SoundId = select(3, ...)
         end
-    end
+        Data.Destroyed = false
 
-    -- Auto‑size height based on text
-    local textBounds = TextService:GetTextSize(fullText, label.TextSize, label.Font, Vector2.new(268, math.huge))
-    local newHeight = math.max(60, textBounds.Y + 12)
-    outer.Size = UDim2.new(0, 300, 0, newHeight)
-
-    -- Play sound if provided
-    if Data.SoundId then
-        local sound = Instance.new("Sound")
-        sound.SoundId = "rbxassetid://" .. tostring(Data.SoundId):gsub("rbxassetid://", "")
-        sound.Volume = 3
-        sound.PlayOnRemove = true
-        sound.Parent = gui
-        sound:Destroy() -- Plays and cleans up
-    end
-
-    -- Fade in animation
-    outer.BackgroundTransparency = 1
-    inner.BackgroundTransparency = 1
-    inner.BorderTransparency = 1
-    innerFrame.BackgroundTransparency = 1
-    gradient.Transparency = 1
-    sideColor.BackgroundTransparency = 1
-    label.TextTransparency = 1
-    if iconLabel then iconLabel.ImageTransparency = 1 end
-
-    local tweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    game:GetService("TweenService"):Create(outer, tweenInfo, { BackgroundTransparency = 0 }):Play()
-    game:GetService("TweenService"):Create(inner, tweenInfo, { BackgroundTransparency = 0, BorderTransparency = 0 }):Play()
-    game:GetService("TweenService"):Create(innerFrame, tweenInfo, { BackgroundTransparency = 0 }):Play()
-    game:GetService("TweenService"):Create(gradient, tweenInfo, { Transparency = 0 }):Play()
-    game:GetService("TweenService"):Create(sideColor, tweenInfo, { BackgroundTransparency = 0 }):Play()
-    game:GetService("TweenService"):Create(label, tweenInfo, { TextTransparency = 0 }):Play()
-    if iconLabel then
-        game:GetService("TweenService"):Create(iconLabel, tweenInfo, { ImageTransparency = 0 }):Play()
-    end
-
-    -- Destroy after delay with fade out
-    task.delay(Data.Time, function()
-        local fadeOut = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-        game:GetService("TweenService"):Create(outer, fadeOut, { BackgroundTransparency = 1 }):Play()
-        game:GetService("TweenService"):Create(inner, fadeOut, { BackgroundTransparency = 1, BorderTransparency = 1 }):Play()
-        game:GetService("TweenService"):Create(innerFrame, fadeOut, { BackgroundTransparency = 1 }):Play()
-        game:GetService("TweenService"):Create(gradient, fadeOut, { Transparency = 1 }):Play()
-        game:GetService("TweenService"):Create(sideColor, fadeOut, { BackgroundTransparency = 1 }):Play()
-        game:GetService("TweenService"):Create(label, fadeOut, { TextTransparency = 1 }):Play()
-        if iconLabel then
-            game:GetService("TweenService"):Create(iconLabel, fadeOut, { ImageTransparency = 1 }):Play()
+        local DeletedInstance = false
+        local DeleteConnection = nil
+        if typeof(Data.Time) == "Instance" then
+            DeleteConnection = Data.Time.Destroying:Connect(function()
+                DeletedInstance = true
+                DeleteConnection:Disconnect()
+                DeleteConnection = nil
+            end)
         end
-        task.wait(0.2)
-        gui:Destroy()
-    end)
+
+        local Side = string.lower(Library.NotifySide)
+        local XSize, YSize = Library:GetTextBounds(Data.Description, Library.Font, 14)
+        YSize = YSize + 7
+
+        local NotifyOuter = Library:Create("Frame", {
+            BorderColor3 = Color3.new(0, 0, 0);
+            Size = UDim2.new(0, 0, 0, YSize);
+            ClipsDescendants = true;
+            ZIndex = 11000;
+            Visible = false;
+            Name = "Notif";
+            Parent = Side == "left" and Library.LeftNotificationArea or Library.RightNotificationArea;
+        })
+
+        local NotifyInner = Library:Create("Frame", {
+            BackgroundColor3 = Library.MainColor;
+            BorderColor3 = Library.OutlineColor;
+            BorderMode = Enum.BorderMode.Inset;
+            Size = UDim2.new(1, 0, 1, 0);
+            ZIndex = 11001;
+            Parent = NotifyOuter;
+        })
+
+        Library:AddToRegistry(NotifyInner, {
+            BackgroundColor3 = "MainColor";
+            BorderColor3 = "OutlineColor";
+        }, true)
+
+        local InnerFrame = Library:Create("Frame", {
+            BackgroundColor3 = Color3.new(1, 1, 1);
+            BorderSizePixel = 0;
+            Position = UDim2.new(0, 1, 0, 1);
+            Size = UDim2.new(1, -2, 1, -2);
+            ZIndex = 11002;
+            Parent = NotifyInner;
+        })
+
+        local Gradient = Library:Create("UIGradient", {
+            Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
+                ColorSequenceKeypoint.new(1, Library.MainColor),
+            });
+            Rotation = -90;
+            Parent = InnerFrame;
+        })
+
+        Library:AddToRegistry(Gradient, {
+            Color = function()
+                return ColorSequence.new({
+                    ColorSequenceKeypoint.new(0, Library:GetDarkerColor(Library.MainColor)),
+                    ColorSequenceKeypoint.new(1, Library.MainColor),
+                })
+            end
+        })
+
+        local ExtraWidth = 0
+        local TextPosition = Side == "left" and UDim2.new(0, 4, 0, 0) or UDim2.new(1, -4, 0, 0)
+        local TextSizeOffsetX = -4
+        local TextSizeOffsetY = 0
+
+        local IconLabel
+        if Data.Icon then
+            local ParsedIcon = Library:GetCustomIcon(Data.Icon)
+            if ParsedIcon then
+                ExtraWidth = ExtraWidth + 20
+                TextSizeOffsetX = TextSizeOffsetX - 20
+                TextSizeOffsetY = TextSizeOffsetY - 2
+
+                if Side == "left" then
+                    TextPosition = UDim2.new(0, 24, 0, 0)
+                end
+
+                IconLabel = Library:Create("ImageLabel", {
+                    BackgroundTransparency = 1,
+                    AnchorPoint = Vector2.new(0, 0.5),
+                    Position = if Side == "left" then UDim2.new(0, 6, 0.5, 0) else UDim2.new(0, 4, 0.5, 0),
+                    Size = UDim2.fromOffset(14, 14),
+                    Image = ParsedIcon.Url,
+                    ImageColor3 = Data.IconColor or Library.FontColor,
+                    ImageRectOffset = ParsedIcon.ImageRectOffset,
+                    ImageRectSize = ParsedIcon.ImageRectSize,
+                    ZIndex = 11004,
+                    Parent = InnerFrame,
+                })
+                
+                if not Data.IconColor then
+                    Library:AddToRegistry(IconLabel, {
+                        ImageColor3 = "FontColor";
+                    }, true)
+                end
+                
+                if Side == "right" then
+                    TextPosition = UDim2.new(1, -8, 0, 0)
+                end
+            end
+        end
+
+        local NotifyLabel = Library:CreateLabel({
+            AnchorPoint = Side == "left" and Vector2.new(0, 0) or Vector2.new(1, 0);
+            Position = TextPosition;
+            Size = UDim2.new(1, TextSizeOffsetX, 1, TextSizeOffsetY);
+            Text = (Data.Title == "" and "" or "[" .. Data.Title .. "] ") .. tostring(Data.Description);
+            TextXAlignment = Side == "left" and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right;
+            TextSize = 14;
+            ZIndex = 11003;
+            RichText = true;
+            Parent = InnerFrame;
+        })
+
+        local SideColor = Library:Create("Frame", {
+            AnchorPoint = Side == "left" and Vector2.new(0, 0) or Vector2.new(1, 0);
+            Position = Side == "left" and UDim2.new(0, -1, 0, -1) or UDim2.new(1, -1, 0, -1);
+            BackgroundColor3 = Library.AccentColor;
+            BorderSizePixel = 0;
+            Size = UDim2.new(0, 3, 1, 2);
+            ZIndex = 11004;
+            Parent = NotifyOuter;
+        })
+
+        Library:AddToRegistry(SideColor, {
+            BackgroundColor3 = "AccentColor";
+        }, true)
+
+        function Data:Resize()
+            XSize, YSize = Library:GetTextBounds(NotifyLabel.Text, Library.Font, 14)
+            YSize = YSize + 7
+            
+            pcall(NotifyOuter.TweenSize, NotifyOuter, UDim2.new(0, XSize * DPIScale + 8 + 4 + ExtraWidth, 0, YSize), "Out", "Quad", 0.4, true)
+        end
+
+        function Data:ChangeTitle(NewText)
+            NewText = NewText == nil and "" or tostring(NewText)
+            Data.Title = NewText
+            NotifyLabel.Text = (Data.Title == "" and "" or "[" .. Data.Title .. "] ") .. tostring(Data.Description)
+            Data:Resize()
+        end
+
+        function Data:ChangeDescription(NewText)
+            if NewText == nil then return end
+            NewText = tostring(NewText)
+            Data.Description = NewText
+            NotifyLabel.Text = (Data.Title == "" and "" or "[" .. Data.Title .. "] ") .. tostring(Data.Description)
+            Data:Resize()
+        end
+
+        function Data:ChangeStep(...)
+        end
+
+        function Data:Destroy()
+            Data.Destroyed = true
+
+            if typeof(Data.Time) == "Instance" then
+                pcall(Data.Time.Destroy, Data.Time)
+            end
+            
+            if DeleteConnection then
+                DeleteConnection:Disconnect()
+            end
+
+            pcall(NotifyOuter.TweenSize, NotifyOuter, UDim2.new(0, 0, 0, YSize), "Out", "Quad", 0.4, true)
+            task.wait(0.4)
+            NotifyOuter:Destroy()
+        end
+
+        Data:Resize()
+
+        if Data.SoundId then
+            Library:Create("Sound", {
+                SoundId = "rbxassetid://" .. tostring(Data.SoundId):gsub("rbxassetid://", "");
+                Volume = 3;
+                PlayOnRemove = true;
+                Parent = game:GetService("SoundService");
+            }):Destroy()
+        end
+
+        NotifyOuter.Visible = true
+        pcall(NotifyOuter.TweenSize, NotifyOuter, UDim2.new(0, XSize * DPIScale + 8 + 4 + ExtraWidth, 0, YSize), "Out", "Quad", 0.4, true)
+
+        task.delay(0.4, function()
+            if Data.Persist then
+                return
+            elseif typeof(Data.Time) == "Instance" then
+                repeat
+                    task.wait()
+                until DeletedInstance or Data.Destroyed
+            else
+                task.wait(Data.Time or 5)
+            end
+
+            if not Data.Destroyed then
+                Data:Destroy()
+            end
+        end)
+
+        return Data
+    end
 end
-
 --// Window \\--
 function Library:CreateWindow(...)
     local Arguments = { ... }
