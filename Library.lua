@@ -6309,7 +6309,7 @@ do
 end
 
 --// Notifications \\--
-do
+--[[do
     Library.LeftNotificationArea = Library:Create("Frame", {
         BackgroundTransparency = 1;
         Position = UDim2.new(0, 0, 0, 40);
@@ -6574,6 +6574,88 @@ do
 
         return Data
     end
+end]]--
+
+function Library:Notify(...)
+    local Data = {}
+    local Info = select(1, ...)
+
+    if typeof(Info) == "table" then
+        Data.Title = Info.Title and tostring(Info.Title) or ""
+        Data.Description = tostring(Info.Description)
+        Data.Time = Info.Time or 5
+        Data.SoundId = Info.SoundId
+    else
+        Data.Title = ""
+        Data.Description = tostring(Info)
+        Data.Time = select(2, ...) or 5
+        Data.SoundId = select(3, ...)
+    end
+
+    -- Create a temporary ScreenGui in CoreGui
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "Notification"
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    gui.Parent = game:GetService("CoreGui")
+
+    -- Background frame
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 300, 0, 50)
+    frame.Position = UDim2.new(0.5, -150, 0, 50)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+
+    -- Accent bar
+    local accent = Instance.new("Frame")
+    accent.Size = UDim2.new(1, 0, 0, 3)
+    accent.Position = UDim2.new(0, 0, 1, -3)
+    accent.BackgroundColor3 = Library.AccentColor
+    accent.BorderSizePixel = 0
+    accent.Parent = frame
+
+    -- Text label
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -10, 1, -10)
+    label.Position = UDim2.new(0, 5, 0, 5)
+    label.BackgroundTransparency = 1
+    label.Text = (Data.Title ~= "" and "[" .. Data.Title .. "] " or "") .. Data.Description
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextSize = 14
+    label.Font = Library.Font
+    label.TextWrapped = true
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = frame
+
+    -- Play sound if provided
+    if Data.SoundId then
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://" .. tostring(Data.SoundId):gsub("rbxassetid://", "")
+        sound.Volume = 1
+        sound.Parent = gui
+        sound:Play()
+        game:GetService("Debris"):AddItem(sound, 5)
+    end
+
+    -- Fade in animation
+    frame.BackgroundTransparency = 1
+    label.TextTransparency = 1
+    accent.BackgroundTransparency = 1
+
+    local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    game:GetService("TweenService"):Create(frame, tweenInfo, { BackgroundTransparency = 0 }):Play()
+    game:GetService("TweenService"):Create(label, tweenInfo, { TextTransparency = 0 }):Play()
+    game:GetService("TweenService"):Create(accent, tweenInfo, { BackgroundTransparency = 0 }):Play()
+
+    -- Destroy after time
+    task.delay(Data.Time, function()
+        local fadeOut = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        game:GetService("TweenService"):Create(frame, fadeOut, { BackgroundTransparency = 1 }):Play()
+        game:GetService("TweenService"):Create(label, fadeOut, { TextTransparency = 1 }):Play()
+        game:GetService("TweenService"):Create(accent, fadeOut, { BackgroundTransparency = 1 }):Play()
+        task.wait(0.2)
+        gui:Destroy()
+    end)
 end
 
 --// Window \\--
