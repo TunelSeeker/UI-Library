@@ -92,140 +92,312 @@ local Buttons = {}
 local Tooltips = {}
 local Dialogues = {}
 
--- https://github.com/deividcomsono/Obsidian/blob/main/Library.lua#L30
-local BaseURL = "https://raw.githubusercontent.com/mstudio45/LinoriaLib/refs/heads/main/"
+-- Replace the entire CustomImageManager section with this enhanced version
+
 local CustomImageManager = {}
 local CustomImageManagerAssets = {
     Cursor = {
         RobloxId = 9619665977,
         Path = "LinoriaLib/assets/Cursor.png",
         URL = BaseURL .. "assets/Cursor.png",
-
         Id = nil,
     },
-
     DropdownArrow = {
         RobloxId = 6282522798,
         Path = "LinoriaLib/assets/DropdownArrow.png",
         URL = BaseURL .. "assets/DropdownArrow.png",
-
         Id = nil,
     },
-
     Checker = {
         RobloxId = 12977615774,
         Path = "LinoriaLib/assets/Checker.png",
         URL = BaseURL .. "assets/Checker.png",
-
         Id = nil,
     },
-
     CheckerLong = {
         RobloxId = 12978095818,
         Path = "LinoriaLib/assets/CheckerLong.png",
         URL = BaseURL .. "assets/CheckerLong.png",
-
         Id = nil,
     },
-
     SaturationMap = {
         RobloxId = 4155801252,
         Path = "LinoriaLib/assets/SaturationMap.png",
         URL = BaseURL .. "assets/SaturationMap.png",
-
         Id = nil,
     }
 }
-do
-    local function RecursiveCreatePath(Path: string, IsFile: boolean?)
-        if not isfolder or not makefolder then
-            return
+
+-- Multiple path strategies to try
+local PATH_STRATEGIES = {
+    -- Strategy 1: Original path
+    function(assetName)
+        return string.format("LinoriaLib/assets/%s.png", assetName)
+    end,
+    -- Strategy 2: Simplified path
+    function(assetName)
+        return string.format("Linoria/%s.png", assetName)
+    end,
+    -- Strategy 3: No folders, just filename
+    function(assetName)
+        return string.format("%s.png", assetName)
+    end,
+    -- Strategy 4: With underscore
+    function(assetName)
+        return string.format("linoria_%s.png", assetName)
+    end,
+    -- Strategy 5: In temp folder (if available)
+    function(assetName)
+        return string.format("temp/Linoria/%s.png", assetName)
+    end,
+}
+
+local function SafeMakeFolder(path)
+    if not isfolder or not makefolder then return false end
+    
+    -- Remove any invalid characters
+    path = path:gsub("[<>:\"/\\|?*]", "_")
+    
+    -- Try to create folder
+    local success, err = pcall(function()
+        if not isfolder(path) then
+            makefolder(path)
         end
+    end)
+    
+    return success
+end
 
-        local Segments = Path:split("/")
-        local TraversedPath = ""
+local function RecursiveCreatePathWithRetry(Path: string, IsFile: boolean?)
+    if not isfolder or not makefolder then
+        return false, "no folder functions"
+    end
 
-        if IsFile then
-            table.remove(Segments, #Segments)
-        end
+    -- Clean the path
+    Path = Path:gsub("[<>:\"/\\|?*]", "_")
+    
+    local Segments = Path:split("/")
+    local TraversedPath = ""
 
-        for _, Segment in ipairs(Segments) do
-            if not isfolder(TraversedPath .. Segment) then
-                makefolder(TraversedPath .. Segment)
+    if IsFile then
+        table.remove(Segments, #Segments)
+    end
+
+    -- Try with different path separators
+    local pathSeparators = { "/", "\\" }
+    
+    for _, separator in ipairs(pathSeparators) do
+        local currentPath = ""
+        local success = true
+        
+        for i, Segment in ipairs(Segments) do
+            if i > 1 then
+                currentPath = currentPath .. separator
             end
-
-            TraversedPath = TraversedPath .. Segment .. "/"
-        end
-
-        return TraversedPath
-    end
-
-    function CustomImageManager.AddAsset(AssetName: string, RobloxAssetId: number, URL: string, ForceRedownload: boolean?)
-        if CustomImageManagerAssets[AssetName] ~= nil then
-            error(string.format("Asset %q already exists", AssetName))
-        end
-
-        assert(typeof(RobloxAssetId) == "number", "RobloxAssetId must be a number")
-
-        CustomImageManagerAssets[AssetName] = {
-            RobloxId = RobloxAssetId,
-            Path = string.format("Obsidian/custom_assets/%s", AssetName),
-            URL = URL,
-
-            Id = nil,
-        }
-
-        CustomImageManager.DownloadAsset(AssetName, ForceRedownload)
-    end
-
-    function CustomImageManager.GetAsset(AssetName: string)
-        if not CustomImageManagerAssets[AssetName] then
-            return nil
-        end
-
-        local AssetData = CustomImageManagerAssets[AssetName]
-        if AssetData.Id then
-            return AssetData.Id
-        end
-
-        local AssetID = string.format("rbxassetid://%s", AssetData.RobloxId)
-
-        if getcustomasset then
-            local Success, NewID = pcall(getcustomasset, AssetData.Path)
-
-            if Success and NewID then
-                AssetID = NewID
+            currentPath = currentPath .. Segment
+            
+            -- Try to create this folder
+            local worked = SafeMakeFolder(currentPath)
+            if not worked then
+                success = false
+                break
             end
         end
+        
+        if success then
+            return true, currentPath .. separator
+        end
+    end
+    
+    return false, "all strategies failed"
+end
 
-        AssetData.Id = AssetID
-        return AssetID
+function CustomImageManager.DownloadAsset(AssetName: string, ForceRedownload: boolean?)
+    if not getcustomasset or not writefile or not isfile then
+        return false, "missing functions"
     end
 
-    function CustomImageManager.DownloadAsset(AssetName: string, ForceRedownload: boolean?)
-        if not getcustomasset or not writefile or not isfile then
-            return false, "missing functions"
+    local AssetData = CustomImageManagerAssets[AssetName]
+    local lastError = ""
+    
+    -- Try each path strategy
+    for strategyIndex, pathFunc in ipairs(PATH_STRATEGIES) do
+        -- Generate path for this strategy
+        local testPath = pathFunc(AssetName)
+        
+        -- Try to create directories for this path
+        local dirSuccess, dirPath = RecursiveCreatePathWithRetry(testPath, true)
+        
+        if dirSuccess or strategyIndex > 2 then -- Allow more attempts even if dir creation "failed"
+            -- Update asset path
+            AssetData.Path = testPath
+            
+            -- Check if file already exists
+            if ForceRedownload ~= true and isfile(AssetData.Path) then
+                -- File exists, try to use it
+                local success, id = pcall(getcustomasset, AssetData.Path)
+                if success and id then
+                    AssetData.Id = id
+                    return true, "using existing file"
+                end
+            end
+            
+            -- Try to download
+            local downloadSuccess, downloadError = pcall(function()
+                -- Add timeout protection
+                local content = game:HttpGet(AssetData.URL, true)
+                if content and #content > 0 then
+                    writefile(AssetData.Path, content)
+                else
+                    error("Empty content downloaded")
+                end
+            end)
+            
+            if downloadSuccess then
+                -- Verify the file was written
+                if isfile(AssetData.Path) then
+                    local success, id = pcall(getcustomasset, AssetData.Path)
+                    if success and id then
+                        AssetData.Id = id
+                        return true, "downloaded successfully"
+                    end
+                end
+            else
+                lastError = tostring(downloadError)
+            end
+        else
+            lastError = "directory creation failed"
         end
+    end
+    
+    -- If all strategies failed, just use Roblox asset ID
+    warn(string.format("Linoria: Failed to download asset '%s' - using Roblox ID. Error: %s", AssetName, lastError))
+    AssetData.Id = string.format("rbxassetid://%s", AssetData.RobloxId)
+    return false, "all strategies failed, using fallback"
+end
 
-        local AssetData = CustomImageManagerAssets[AssetName]
-
-        RecursiveCreatePath(AssetData.Path, true)
-
-        if ForceRedownload ~= true and isfile(AssetData.Path) then
-            return true, nil
-        end
-
-        local success, errorMessage = pcall(function()
-            writefile(AssetData.Path, game:HttpGet(AssetData.URL))
-        end)
-
-        return success, errorMessage
+function CustomImageManager.GetAsset(AssetName: string)
+    if not CustomImageManagerAssets[AssetName] then
+        return nil
     end
 
-    for AssetName, _ in CustomImageManagerAssets do
-        CustomImageManager.DownloadAsset(AssetName)
+    local AssetData = CustomImageManagerAssets[AssetName]
+    
+    -- If we already have a cached ID, use it
+    if AssetData.Id then
+        return AssetData.Id
+    end
+
+    -- Try to get custom asset
+    if getcustomasset then
+        -- Try each path strategy to find existing file
+        for _, pathFunc in ipairs(PATH_STRATEGIES) do
+            local testPath = pathFunc(AssetName)
+            
+            if isfile and isfile(testPath) then
+                local success, id = pcall(getcustomasset, testPath)
+                if success and id then
+                    AssetData.Id = id
+                    AssetData.Path = testPath
+                    return id
+                end
+            end
+        end
+    end
+
+    -- Fallback to Roblox asset ID
+    local fallbackId = string.format("rbxassetid://%s", AssetData.RobloxId)
+    AssetData.Id = fallbackId
+    return fallbackId
+end
+
+-- Initialize with automatic retry system
+local function InitializeImageManagerWithRetry(maxRetries)
+    maxRetries = maxRetries or 3
+    
+    if not getcustomasset or not writefile or not isfile then
+        warn("Linoria: File system functions not available - using Roblox asset IDs")
+        -- Still set fallback IDs
+        for AssetName, data in pairs(CustomImageManagerAssets) do
+            data.Id = string.format("rbxassetid://%s", data.RobloxId)
+        end
+        return
+    end
+    
+    -- Try to download each asset with retries
+    for AssetName, _ in pairs(CustomImageManagerAssets) do
+        local success = false
+        local attempts = 0
+        
+        while not success and attempts < maxRetries do
+            attempts = attempts + 1
+            success, _ = pcall(function()
+                return CustomImageManager.DownloadAsset(AssetName)
+            end)
+            
+            if not success and attempts < maxRetries then
+                task.wait(0.1 * attempts) -- Wait longer between retries
+            end
+        end
+        
+        if not success then
+            -- Set fallback ID on final failure
+            CustomImageManagerAssets[AssetName].Id = string.format("rbxassetid://%s", CustomImageManagerAssets[AssetName].RobloxId)
+        end
     end
 end
+
+-- Add a function to manually retry failed downloads
+function CustomImageManager.RetryFailedDownloads()
+    for AssetName, data in pairs(CustomImageManagerAssets) do
+        -- If we're using Roblox ID (fallback) and we have file functions, try again
+        if data.Id and data.Id:match("rbxassetid") and getcustomasset then
+            task.spawn(function()
+                CustomImageManager.DownloadAsset(AssetName, true) -- Force redownload
+            end)
+        end
+    end
+end
+
+-- Add a function to check status
+function CustomImageManager.GetAssetStatus(AssetName)
+    local data = CustomImageManagerAssets[AssetName]
+    if not data then return "unknown" end
+    
+    if data.Id and not data.Id:match("rbxassetid") then
+        return "custom"
+    elseif data.Id then
+        return "fallback"
+    else
+        return "not_loaded"
+    end
+end
+
+-- Initialize with first attempt
+task.spawn(function()
+    -- Wait a bit for environment to fully load
+    task.wait(0.5)
+    
+    -- Try initialization
+    local success, err = pcall(InitializeImageManagerWithRetry)
+    if not success then
+        warn("Linoria: Initial image manager setup failed - using fallbacks. Error:", err)
+        -- Set fallback IDs
+        for AssetName, data in pairs(CustomImageManagerAssets) do
+            data.Id = string.format("rbxassetid://%s", data.RobloxId)
+        end
+    end
+    
+    -- Schedule a retry attempt later (in case permissions become available)
+    task.delay(5, function()
+        if getcustomasset then
+            CustomImageManager.RetryFailedDownloads()
+        end
+    end)
+end)
+
+-- Override the existing CustomImageManager in your library
+Library.ImageManager = CustomImageManager
 
 local DPIScale = 1;
 local Library = {
